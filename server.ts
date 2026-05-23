@@ -154,16 +154,30 @@ function writeDB(data: DatabaseSchema) {
 let supabaseClientInstance: any = null;
 
 function getSupabaseClient() {
-  const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
-  if (url && key) {
-    if (!supabaseClientInstance) {
+  const url = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "").trim();
+  const key = (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || "").trim();
+  
+  // If either is missing or is the default placeholder text, do not try to initialize
+  if (!url || !key || url.includes("YOUR_SUPABASE") || key.includes("YOUR_SUPABASE")) {
+    return null;
+  }
+
+  // Validate that the URL is a proper HTTP/HTTPS URL to avoid throwing errors during initialization
+  if (!url.match(/^https?:\/\//i)) {
+    console.warn(`[Supabase Config] Supabase URL "${url}" is invalid; it must start with http:// or https://. Falling back to local db.json.`);
+    return null;
+  }
+
+  if (!supabaseClientInstance) {
+    try {
       supabaseClientInstance = createClient(url, key);
       console.log("[Supabase Config] Successfully initialized Supabase client module.");
+    } catch (e: any) {
+      console.error("[Supabase Config] Failed to create Supabase client:", e?.message || e);
+      return null;
     }
-    return supabaseClientInstance;
   }
-  return null;
+  return supabaseClientInstance;
 }
 
 // --- DATABASE REPOSITORIES ---
