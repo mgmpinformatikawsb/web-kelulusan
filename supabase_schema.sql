@@ -14,6 +14,9 @@ CREATE TABLE IF NOT EXISTS students (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
+-- Matikan RLS agar dapat diakses backend via Anon/Service Role Key secara penuh
+ALTER TABLE students DISABLE ROW LEVEL SECURITY;
+
 -- Buat indeks pencarian cepat berdasarkan NISN & tanggal lahir
 CREATE INDEX IF NOT EXISTS idx_students_search ON students (nisn, tanggal_lahir);
 
@@ -22,6 +25,8 @@ CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value JSONB NOT NULL
 );
+
+ALTER TABLE settings DISABLE ROW LEVEL SECURITY;
 
 -- Isi data awal settings jika kosong
 INSERT INTO settings (key, value)
@@ -44,6 +49,8 @@ CREATE TABLE IF NOT EXISTS stats (
     value INTEGER NOT NULL DEFAULT 0
 );
 
+ALTER TABLE stats DISABLE ROW LEVEL SECURITY;
+
 -- Isi nilai awal pengunjung jika kosong
 INSERT INTO stats (key, value)
 VALUES ('visitor_count', 53)
@@ -54,6 +61,8 @@ CREATE TABLE IF NOT EXISTS admin (
     username TEXT PRIMARY KEY,
     password_hash TEXT NOT NULL
 );
+
+ALTER TABLE admin DISABLE ROW LEVEL SECURITY;
 
 -- Isi kata sandi bawaan admin (username: admin, password: admin123 dengan salt sha256)
 -- Password hash: sha256("admin123" + "smp_kelulusan_salt_2026")

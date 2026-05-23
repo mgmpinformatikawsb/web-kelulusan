@@ -178,15 +178,22 @@ async function getAnnouncementSettings(): Promise<AnnouncementSettings> {
         .eq("key", "announcement_settings")
         .maybeSingle();
 
+      if (error) {
+        console.error("[Supabase Error Detail] getAnnouncementSettings failed:", error.message, error.details, error.hint);
+      }
+
       if (data && data.value) {
         return data.value;
       }
       // Insert default settings if it does not exist
       const defaultSettings = INITIAL_DB.settings;
-      await sb.from("settings").upsert({ key: "announcement_settings", value: defaultSettings });
+      const { error: upsertError } = await sb.from("settings").upsert({ key: "announcement_settings", value: defaultSettings });
+      if (upsertError) {
+        console.error("[Supabase Error Detail] Initial settings upsert failed:", upsertError.message);
+      }
       return defaultSettings;
     } catch (e) {
-      console.error("[Supabase Error] Failed to fetch settings, falling back to db.json:", e);
+      console.error("[Supabase Error] Exception in getAnnouncementSettings, falling back to db.json:", e);
     }
   }
   return readDB().settings;
@@ -196,10 +203,14 @@ async function saveAnnouncementSettings(settings: AnnouncementSettings): Promise
   const sb = getSupabaseClient();
   if (sb) {
     try {
-      await sb.from("settings").upsert({ key: "announcement_settings", value: settings });
+      const { error } = await sb.from("settings").upsert({ key: "announcement_settings", value: settings });
+      if (error) {
+        console.error("[Supabase Error Detail] saveAnnouncementSettings failed:", error.message, error.details);
+        throw new Error(error.message);
+      }
       return;
     } catch (e) {
-      console.error("[Supabase Error] Failed to update settings, falling back to db.json:", e);
+      console.error("[Supabase Error] Exception in saveAnnouncementSettings, falling back to db.json:", e);
     }
   }
   const db = readDB();
@@ -216,14 +227,22 @@ async function getVisitorCount(): Promise<number> {
         .select("value")
         .eq("key", "visitor_count")
         .maybeSingle();
+      
+      if (error) {
+        console.error("[Supabase Error Detail] getVisitorCount failed:", error.message);
+      }
+
       if (data) {
         return Number(data.value);
       }
       // Put default visitor count if not exists
-      await sb.from("stats").upsert({ key: "visitor_count", value: INITIAL_DB.stats.visitor_count });
+      const { error: upsertError } = await sb.from("stats").upsert({ key: "visitor_count", value: INITIAL_DB.stats.visitor_count });
+      if (upsertError) {
+        console.error("[Supabase Error Detail] Initial stats upsert failed:", upsertError.message);
+      }
       return INITIAL_DB.stats.visitor_count;
     } catch (e) {
-      console.error("[Supabase Error] Failed to fetch visitor_count, falling back to db.json:", e);
+      console.error("[Supabase Error] Exception in getVisitorCount, falling back to db.json:", e);
     }
   }
   return readDB().stats.visitor_count;
@@ -235,10 +254,14 @@ async function incrementVisitorCount(): Promise<number> {
     try {
       const current = await getVisitorCount();
       const updated = current + 1;
-      await sb.from("stats").upsert({ key: "visitor_count", value: updated });
+      const { error } = await sb.from("stats").upsert({ key: "visitor_count", value: updated });
+      if (error) {
+        console.error("[Supabase Error Detail] incrementVisitorCount write failed:", error.message);
+        throw new Error(error.message);
+      }
       return updated;
     } catch (e) {
-      console.error("[Supabase Error] Failed to increment visitor count on Supabase:", e);
+      console.error("[Supabase Error] Exception in incrementVisitorCount on Supabase:", e);
     }
   }
   const db = readDB();
@@ -256,15 +279,23 @@ async function getAdminCredentials(): Promise<{ username: string; passwordHash: 
         .select("username, password_hash")
         .eq("username", "admin")
         .maybeSingle();
+      
+      if (error) {
+        console.error("[Supabase Error Detail] getAdminCredentials failed:", error.message);
+      }
+
       if (data) {
         return { username: data.username, passwordHash: data.password_hash };
       }
       // Set default admin if not exists
       const defaultAdmin = { username: INITIAL_DB.admin.username, password_hash: INITIAL_DB.admin.passwordHash };
-      await sb.from("admin").upsert(defaultAdmin);
+      const { error: upsertError } = await sb.from("admin").upsert(defaultAdmin);
+      if (upsertError) {
+        console.error("[Supabase Error Detail] Initial admin credentials upsert failed:", upsertError.message);
+      }
       return { username: INITIAL_DB.admin.username, passwordHash: INITIAL_DB.admin.passwordHash };
     } catch (e) {
-      console.error("[Supabase Error] Failed to find admin username, falling back to db.json:", e);
+      console.error("[Supabase Error] Exception in getAdminCredentials, falling back to db.json:", e);
     }
   }
   const db = readDB();
@@ -275,10 +306,14 @@ async function updateAdminPasswordHash(newHash: string): Promise<void> {
   const sb = getSupabaseClient();
   if (sb) {
     try {
-      await sb.from("admin").upsert({ username: "admin", password_hash: newHash });
+      const { error } = await sb.from("admin").upsert({ username: "admin", password_hash: newHash });
+      if (error) {
+        console.error("[Supabase Error Detail] updateAdminPasswordHash failed:", error.message);
+        throw new Error(error.message);
+      }
       return;
     } catch (e) {
-      console.error("[Supabase Error] Failed to update admin password on Supabase:", e);
+      console.error("[Supabase Error] Exception in updateAdminPasswordHash on Supabase:", e);
     }
   }
   const db = readDB();
@@ -294,11 +329,16 @@ async function getStudentsList(): Promise<Siswa[]> {
         .from("students")
         .select("*")
         .order("nama", { ascending: true });
+      
+      if (error) {
+        console.error("[Supabase Error Detail] getStudentsList failed:", error.message);
+      }
+
       if (data) {
         return data as Siswa[];
       }
     } catch (e) {
-      console.error("[Supabase Error] Failed to list students on Supabase:", e);
+      console.error("[Supabase Error] Exception in getStudentsList on Supabase:", e);
     }
   }
   return readDB().students;
@@ -314,12 +354,17 @@ async function findStudentByCredentials(nisn: string, tanggalLahir: string): Pro
         .eq("nisn", nisn.trim())
         .eq("tanggal_lahir", tanggalLahir.trim())
         .maybeSingle();
+      
+      if (error) {
+        console.error("[Supabase Error Detail] findStudentByCredentials failed:", error.message, error.details);
+      }
+
       if (data) {
         return data as Siswa;
       }
       return null;
     } catch (e) {
-      console.error("[Supabase Error] Failed to find unique student with credentials:", e);
+      console.error("[Supabase Error] Exception in findUniqueStudent on Supabase:", e);
     }
   }
   const db = readDB();
@@ -339,10 +384,15 @@ async function checkNisnExists(nisn: string, excludeId?: string): Promise<boolea
       if (excludeId) {
         query = query.neq("id", excludeId);
       }
-      const { data } = await query;
+      const { data, error } = await query;
+      
+      if (error) {
+        console.error("[Supabase Error Detail] checkNisnExists query failed:", error.message);
+      }
+
       return (data && data.length > 0) || false;
     } catch (e) {
-      console.error("[Supabase Error] Failed to query check duplicate NISN:", e);
+      console.error("[Supabase Error] Exception in checkNisnExists query:", e);
     }
   }
   const db = readDB();
@@ -353,10 +403,14 @@ async function createStudent(siswa: Siswa): Promise<void> {
   const sb = getSupabaseClient();
   if (sb) {
     try {
-      await sb.from("students").insert(siswa);
+      const { error } = await sb.from("students").insert(siswa);
+      if (error) {
+        console.error("[Supabase Error Detail] createStudent insert failed:", error.message, error.details);
+        throw new Error(error.message);
+      }
       return;
     } catch (e) {
-      console.error("[Supabase Error] Failed to insert student on Supabase info:", e);
+      console.error("[Supabase Error] Exception in createStudent on Supabase info:", e);
     }
   }
   const db = readDB();
@@ -368,10 +422,14 @@ async function updateStudent(id: string, siswaPayload: Partial<Siswa>): Promise<
   const sb = getSupabaseClient();
   if (sb) {
     try {
-      await sb.from("students").update(siswaPayload).eq("id", id);
+      const { error } = await sb.from("students").update(siswaPayload).eq("id", id);
+      if (error) {
+        console.error("[Supabase Error Detail] updateStudent update failed:", error.message);
+        throw new Error(error.message);
+      }
       return;
     } catch (e) {
-      console.error("[Supabase Error] Failed to update student on Supabase:", e);
+      console.error("[Supabase Error] Exception in updateStudent on Supabase:", e);
     }
   }
   const db = readDB();
@@ -387,9 +445,13 @@ async function removeStudent(id: string): Promise<boolean> {
   if (sb) {
     try {
       const { error } = await sb.from("students").delete().eq("id", id);
-      if (!error) return true;
+      if (error) {
+        console.error("[Supabase Error Detail] removeStudent delete failed:", error.message);
+        throw new Error(error.message);
+      }
+      return true;
     } catch (e) {
-      console.error("[Supabase Error] Failed to delete student on Supabase:", e);
+      console.error("[Supabase Error] Exception in delete student on Supabase:", e);
     }
   }
   const db = readDB();
@@ -418,7 +480,10 @@ async function bulkUpsertStudents(studentsList: any[]): Promise<{ imported: numb
         const rawStatus = String(s.status_kelulusan || "LULUS").toUpperCase().includes("TIDAK") ? "TIDAK LULUS" : "LULUS";
         
         // Check if student exists by NISN
-        const { data: existing } = await sb.from("students").select("id").eq("nisn", rawNISN).maybeSingle();
+        const { data: existing, error: existError } = await sb.from("students").select("id").eq("nisn", rawNISN).maybeSingle();
+        if (existError) {
+          console.error("[Supabase Error Detail] Bulk single select failed:", existError.message);
+        }
         const studentId = existing?.id || ("std-" + crypto.randomBytes(8).toString("hex"));
 
         const payload = {
@@ -434,7 +499,9 @@ async function bulkUpsertStudents(studentsList: any[]): Promise<{ imported: numb
         };
 
         const { error } = await sb.from("students").upsert(payload);
-        if (!error) {
+        if (error) {
+          console.error("[Supabase Error Detail] Bulk single upsert failed:", error.message, error.details);
+        } else {
           if (existing) {
             updated++;
           } else {
@@ -444,7 +511,7 @@ async function bulkUpsertStudents(studentsList: any[]): Promise<{ imported: numb
       }
       return { imported, updated };
     } catch (e) {
-      console.error("[Supabase Error] Bulk import failed, falling back to local storage:", e);
+      console.error("[Supabase Error] Exception in bulk import on Supabase:", e);
     }
   }
 
