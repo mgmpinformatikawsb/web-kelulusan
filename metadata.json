@@ -1,0 +1,6 @@
+{
+  "name": "Pengumuman Kelulusan SMP",
+  "description": "Website Pengumuman Kelulusan Siswa Kelas IX SMP dengan panel admin terintegrasi untuk manajemen data, import/export, dan pengaturan waktu pengumuman.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
